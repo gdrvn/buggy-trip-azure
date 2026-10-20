@@ -425,8 +425,8 @@
   const SEATS_PER_BUGGY = 4;
 
   // The date shown in the date picker. Every booking, cancellation and seat move
-  // applies to this date only. Each visitor's page opens on today.
-  let selectedDate = localDateString(0);
+  // applies to this date only. Each visitor's page opens on tomorrow.
+  let selectedDate = localDateString(1);
   let participants = [];
 
   const el = {
