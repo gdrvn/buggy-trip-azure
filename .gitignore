@@ -1,0 +1,4 @@
+# Local SQLite data and test files — never commit bookings
+*.sqlite
+buggy-trip-data/
+*.zip

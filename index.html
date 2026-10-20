@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buggy Trip Sign-Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand: #F1E6C8;
+    --sand-light: #FBF4E2;
+    --ink: #241C14;
+    --ink-soft: #4A3B2A;
+    --rust: #C1521E;
+    --rust-dark: #8C3814;
+    --teal: #2C5356;
+    --teal-light: #3E6E70;
+    --muted: #B9A97D;
+    --locked: #8C2F1B;
+    --border: rgba(36, 28, 20, 0.16);
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--sand);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    line-height: 1.4;
+  }
+
+  .display {
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .mono { font-family: 'Space Mono', monospace; }
+
+  a { color: var(--teal); }
+
+  button {
+    font-family: 'Work Sans', sans-serif;
+    cursor: pointer;
+  }
+
+  input:focus-visible,
+  button:focus-visible,
+  summary:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--ink);
+    color: var(--sand);
+    padding: 36px 20px 28px;
+    text-align: center;
+  }
+
+  .eyebrow {
+    margin: 0 0 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    color: var(--rust);
+  }
+
+  .hero h1 {
+    margin: 0 0 18px;
+    font-size: clamp(28px, 6vw, 44px);
+    border-bottom: 4px solid var(--rust);
+    display: inline-block;
+    padding-bottom: 10px;
+  }
+
+  .date-editor {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .date-editor input[type="date"] {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(15px, 3vw, 18px);
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(241, 230, 200, 0.35);
+    background: rgba(241, 230, 200, 0.08);
+    color: var(--sand);
+    color-scheme: dark;
+  }
+
+  .quick-date-btn {
+    background: transparent;
+    border: 1px solid var(--rust);
+    color: var(--rust);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 20px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .quick-date-btn:hover { background: var(--rust); color: #fff; }
+
+  /* ---------- Sections ---------- */
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+
+  .card {
+    background: var(--sand-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+
+  .join-card { margin-bottom: 22px; }
+
+  .join-card h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+  }
+
+  #joinForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  #joinForm label {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    gap: 6px;
+  }
+
+  #joinForm input {
+    font-size: 15px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--ink);
+    font-family: inherit;
+  }
+
+  .join-btn {
+    background: var(--rust);
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.15s ease;
+  }
+
+  .join-btn:hover:not(:disabled) { background: var(--rust-dark); }
+
+  .join-btn:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .form-message {
+    margin: 10px 0 0;
+    font-size: 13px;
+    min-height: 18px;
+  }
+
+  .form-message.error { color: var(--locked); }
+  .form-message.success { color: var(--teal); }
+
+  @media (max-width: 620px) {
+    #joinForm { grid-template-columns: 1fr; }
+  }
+
+  .reset-btn {
+    background: none;
+    border: none;
+    color: var(--locked);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ---------- Convoy grid ---------- */
+  .convoy-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+
+  .convoy-heading h2 {
+    font-size: 16px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink-soft);
+  }
+
+  .convoy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 16px;
+  }
+
+  .buggy-card {
+    background: var(--sand-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 14px 8px;
+  }
+
+  .buggy-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px dashed var(--muted);
+  }
+
+  .buggy-label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+  }
+
+  .buggy-number {
+    font-family: 'Anton', sans-serif;
+    font-size: 20px;
+  }
+
+  .buggy-fill {
+    margin-left: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .seat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 4px;
+    border-radius: 6px;
+    transition: background 0.1s ease, outline 0.1s ease;
+  }
+
+  .seat.drop-target {
+    outline: 2px dashed var(--teal);
+    outline-offset: -2px;
+    background: rgba(44, 83, 86, 0.08);
+  }
+
+  .seat.dragging { opacity: 0.35; }
+
+  .drag-handle {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 24px;
+    color: var(--muted);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .drag-handle:active { cursor: grabbing; }
+
+  .seat-peg {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+
+  .seat.filled .seat-peg {
+    background: var(--rust);
+    color: #fff;
+  }
+
+  .seat.empty .seat-peg {
+    border: 2px dashed var(--muted);
+    color: var(--muted);
+  }
+
+  .seat-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .seat-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .seat-pickup {
+    font-size: 12px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .seat-open {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .cancel-btn {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--locked);
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cancel-btn:hover:not(:disabled) {
+    background: var(--locked);
+    color: #fff;
+  }
+
+  .cancel-btn:disabled {
+    color: var(--muted);
+    background: transparent;
+    cursor: not-allowed;
+  }
+
+  body.drag-active,
+  body.drag-active .seat,
+  body.drag-active .drag-handle {
+    cursor: grabbing !important;
+  }
+
+  footer {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="eyebrow" style="font-family:'Space Mono',monospace; text-transform:uppercase;">GROUP TRIP</p>
+  <h1 class="display">Buggy Trip Sign-Up</h1>
+  <div class="date-editor">
+    <input type="date" id="tripDateInput" aria-label="Trip date">
+    <button type="button" class="quick-date-btn" id="todayBtn">Today</button>
+    <button type="button" class="quick-date-btn" id="tomorrowBtn">Tomorrow</button>
+  </div>
+</header>
+
+<main>
+
+  <section class="card join-card">
+    <h2>Join the convoy</h2>
+    <form id="joinForm">
+      <label for="nameInput">Name
+        <input id="nameInput" type="text" maxlength="40" required>
+      </label>
+      <label for="pickupInput">Pickup location
+        <input id="pickupInput" type="text" maxlength="60" placeholder="e.g. hotel name or street" required>
+      </label>
+      <button type="submit" class="join-btn" id="joinBtn">Join trip</button>
+    </form>
+    <p class="form-message" id="formMessage" aria-live="polite"></p>
+  </section>
+
+  <div class="convoy-heading">
+    <h2>The convoy</h2>
+  </div>
+  <section class="convoy-grid" id="convoyGrid" aria-live="polite"></section>
+
+</main>
+
+<footer>
+  <p>Share this page's link with the group — everyone sees the same live sign-up list.</p>
+  <button class="reset-btn" id="resetBtn" type="button">Reset this date (clear its sign-ups)</button>
+</footer>
+
+<section id="debugPanel" style="max-width:920px;margin:0 auto 40px;padding:0 20px;">
+  <details open>
+    <summary style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#4A3B2A;cursor:pointer;">Debug log (temporary — for troubleshooting)</summary>
+    <pre id="debugLog" style="background:#1a1410;color:#9fd4a8;font-family:'Space Mono',monospace;font-size:11px;line-height:1.5;padding:12px;border-radius:8px;max-height:260px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px;"></pre>
+  </details>
+</section>
+
+<script>
+(function () {
+  // api.php lives in the same folder as this file.
+  const API_BASE = 'api.php';
+  const SEATS_PER_BUGGY = 4;
+
+  // The date shown in the date picker. Every booking, cancellation, seat move and reset
+  // applies to this date only. Each visitor's page opens on today.
+  let selectedDate = localDateString(0);
+  let participants = [];
+
+  const el = {
+    joinForm: document.getElementById('joinForm'),
+    nameInput: document.getElementById('nameInput'),
+    pickupInput: document.getElementById('pickupInput'),
+    joinBtn: document.getElementById('joinBtn'),
+    formMessage: document.getElementById('formMessage'),
+    tripDateInput: document.getElementById('tripDateInput'),
+    todayBtn: document.getElementById('todayBtn'),
+    tomorrowBtn: document.getElementById('tomorrowBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    convoyGrid: document.getElementById('convoyGrid'),
+    debugLog: document.getElementById('debugLog'),
+  };
+
+  function logDebug(msg) {
+    const now = new Date();
+    const time = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+    const line = '[' + time + '] ' + msg;
+    console.log(line);
+    if (el.debugLog) {
+      el.debugLog.textContent += line + '\n';
+      el.debugLog.scrollTop = el.debugLog.scrollHeight;
+    }
+  }
+
+  // YYYY-MM-DD in the visitor's own time zone. (toISOString() uses UTC, which gives
+  // yesterday's date between 00:00 and 02:00 in Germany.)
+  function localDateString(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  function formatDateLong(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  // Bind handlers right away so a click is never missed while data is still loading.
+  el.joinForm.addEventListener('submit', handleJoin);
+  el.tripDateInput.addEventListener('change', function () { handleDateChange(el.tripDateInput.value); });
+  el.todayBtn.addEventListener('click', function () { handleDateChange(localDateString(0)); });
+  el.tomorrowBtn.addEventListener('click', function () { handleDateChange(localDateString(1)); });
+  el.resetBtn.addEventListener('click', handleReset);
+
+  async function readJson(res, label) {
+    const rawText = await res.text();
+    logDebug(label + ' response [' + res.status + ']: ' + rawText);
+    let body;
+    try {
+      body = JSON.parse(rawText);
+    } catch (parseErr) {
+      logDebug(label + ' response was not valid JSON: ' + parseErr.message);
+      throw new Error('Response was not valid JSON (status ' + res.status + ')');
+    }
+    if (!res.ok) throw new Error(body.error || 'Request failed');
+    return body;
+  }
+
+  // Loads the bookings for one date. A cache-busting param + no-store guard against
+  // any layer (browser or host) caching this GET.
+  async function fetchState(date) {
+    const url = API_BASE + '?action=state&date=' + encodeURIComponent(date) + '&_=' + Date.now();
+    logDebug('GET ' + url);
+    const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+    return readJson(res, 'GET');
+  }
+
+  // Sends a POST action (join / cancel / reorder / reset) and returns { date, participants }.
+  async function postAction(action, data) {
+    const payload = JSON.stringify(Object.assign({ action: action }, data || {}));
+    logDebug('POST ' + API_BASE + ' body=' + payload);
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    return readJson(res, 'POST');
+  }
+
+  // Shows a server response only if it belongs to the date currently on screen
+  // (the visitor may have switched dates while the request was running).
+  function applyState(state) {
+    if (!state || state.date !== selectedDate) {
+      logDebug('Ignored response for ' + (state && state.date) + ' (showing ' + selectedDate + ')');
+      return;
+    }
+    participants = state.participants || [];
+    render();
+  }
+
+  async function reloadSelectedDate() {
+    try {
+      applyState(await fetchState(selectedDate));
+    } catch (err) {
+      setFormMessage('Could not load bookings: ' + err.message, 'error');
+    }
+  }
+
+  function getCutoffDate(dateStr) {
+    const ride = new Date(dateStr + 'T00:00:00');
+    const cutoff = new Date(ride);
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(22, 0, 0, 0);
+    return cutoff;
+  }
+
+  function isCancellationLocked() {
+    return new Date() >= getCutoffDate(selectedDate);
+  }
+
+  function syncDateInput() {
+    if (document.activeElement !== el.tripDateInput) {
+      el.tripDateInput.value = selectedDate;
+    }
+  }
+
+  function setFormMessage(text, type) {
+    el.formMessage.textContent = text;
+    el.formMessage.className = 'form-message' + (type ? ' ' + type : '');
+  }
+
+  function renderConvoy() {
+    const locked = isCancellationLocked();
+    // One buggy by default; a new one appears once the current ones are full (4 seats each).
+    const buggyCount = Math.max(1, Math.ceil(participants.length / SEATS_PER_BUGGY));
+    el.convoyGrid.innerHTML = '';
+
+    for (let b = 0; b < buggyCount; b++) {
+      const group = participants.slice(b * SEATS_PER_BUGGY, b * SEATS_PER_BUGGY + SEATS_PER_BUGGY);
+      const card = document.createElement('div');
+      card.className = 'buggy-card';
+
+      const header = document.createElement('div');
+      header.className = 'buggy-header';
+      header.innerHTML =
+        '<span class="buggy-label">BUGGY</span>' +
+        '<span class="buggy-number display">' + String(b + 1).padStart(2, '0') + '</span>' +
+        '<span class="buggy-fill">' + group.length + '/' + SEATS_PER_BUGGY + '</span>';
+      card.appendChild(header);
+
+      for (let s = 0; s < SEATS_PER_BUGGY; s++) {
+        const person = group[s];
+        const flatIndex = b * SEATS_PER_BUGGY + s;
+        const seat = document.createElement('div');
+        seat.dataset.flatIndex = String(flatIndex);
+
+        if (person) {
+          const saved = typeof person.id === 'number';
+          seat.className = 'seat filled';
+          seat.dataset.id = String(person.id);
+
+          const canDrag = !locked && saved;
+          seat.innerHTML =
+            (canDrag
+              ? '<span class="drag-handle" title="Drag to move"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">' +
+                '<circle cx="2" cy="2" r="1.4"/><circle cx="8" cy="2" r="1.4"/>' +
+                '<circle cx="2" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/>' +
+                '<circle cx="2" cy="14" r="1.4"/><circle cx="8" cy="14" r="1.4"/></svg></span>'
+              : '<span class="seat-peg-spacer" style="width:18px;flex:none;"></span>') +
+            '<span class="seat-peg">' + (s + 1) + '</span>' +
+            '<span class="seat-info">' +
+              '<span class="seat-name"></span>' +
+              '<span class="seat-pickup"></span>' +
+            '</span>';
+          seat.querySelector('.seat-name').textContent = person.name;
+          seat.querySelector('.seat-pickup').textContent = person.pickup;
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.className = 'cancel-btn';
+          cancelBtn.type = 'button';
+          cancelBtn.textContent = '×';
+          cancelBtn.disabled = locked || !saved;
+          cancelBtn.title = locked ? 'Cancellations are closed for this date' : 'Cancel this spot';
+          cancelBtn.addEventListener('click', () => handleCancel(person.id));
+          seat.appendChild(cancelBtn);
+        } else {
+          seat.className = 'seat empty';
+          seat.innerHTML =
+            '<span class="seat-peg-spacer" style="width:18px;flex:none;"></span>' +
+            '<span class="seat-peg">' + (s + 1) + '</span>' +
+            '<span class="seat-open">Open seat</span>';
+        }
+        card.appendChild(seat);
+      }
+      el.convoyGrid.appendChild(card);
+    }
+  }
+
+  function render() {
+    logDebug('render() date=' + selectedDate + ' participants.length=' + participants.length +
+      ' [' + participants.map(function (p) { return p.name; }).join(', ') + ']');
+    syncDateInput();
+    renderConvoy();
+  }
+
+  async function handleJoin(e) {
+    e.preventDefault();
+    await readyPromise;
+    const date = selectedDate;
+    const name = el.nameInput.value.trim();
+    const pickup = el.pickupInput.value.trim();
+    if (!name || !pickup) {
+      setFormMessage('Enter a name and a pickup location.', 'error');
+      return;
+    }
+
+    // Optimistic local entry so the screen updates immediately.
+    participants = participants.concat([{
+      id: 'temp-' + Date.now(),
+      name: name,
+      pickup: pickup,
+      joinedAt: new Date().toISOString(),
+    }]);
+    el.nameInput.value = '';
+    el.pickupInput.value = '';
+    setFormMessage('You’re in! See your buggy below.', 'success');
+    el.joinBtn.disabled = true;
+    render();
+
+    try {
+      applyState(await postAction('join', { date: date, name: name, pickup: pickup }));
+    } catch (err) {
+      console.error('Join failed', err);
+      setFormMessage('Could not save your booking: ' + err.message, 'error');
+      await reloadSelectedDate();
+    } finally {
+      el.joinBtn.disabled = false;
+    }
+  }
+
+  async function handleCancel(id) {
+    await readyPromise;
+    if (isCancellationLocked()) return;
+    if (!confirm('Cancel this spot?')) return;
+
+    participants = participants.filter(function (p) { return p.id !== id; });
+    render();
+
+    try {
+      applyState(await postAction('cancel', { id: id }));
+    } catch (err) {
+      console.error('Cancel failed', err);
+      alert('Could not cancel: ' + err.message);
+      await reloadSelectedDate();
+    }
+  }
+
+  async function moveParticipant(participantId, targetFlatIndex) {
+    await readyPromise;
+    const currentIndex = participants.findIndex(function (p) { return String(p.id) === String(participantId); });
+    if (currentIndex === -1 || currentIndex === targetFlatIndex) return;
+
+    const newList = participants.slice();
+    const moved = newList.splice(currentIndex, 1)[0];
+    newList.splice(Math.min(targetFlatIndex, newList.length), 0, moved);
+    participants = newList;
+    render();
+
+    try {
+      applyState(await postAction('reorder', {
+        date: selectedDate,
+        order: participants.map(function (p) { return p.id; }),
+      }));
+    } catch (err) {
+      console.error('Reorder failed', err);
+      alert('Could not save the new seating: ' + err.message);
+      await reloadSelectedDate();
+    }
+  }
+
+  // Drag-and-drop for seats, using Pointer Events so it works with mouse, touch, and pen alike.
+  let dragState = null;
+
+  function onDragPointerMove(ev) {
+    ev.preventDefault();
+    const targetEl = document.elementFromPoint(ev.clientX, ev.clientY);
+    const seatTarget = targetEl ? targetEl.closest('.seat') : null;
+    const grid = el.convoyGrid;
+    grid.querySelectorAll('.seat.drop-target').forEach(function (s) { s.classList.remove('drop-target'); });
+    if (seatTarget && grid.contains(seatTarget) && seatTarget.dataset.flatIndex !== undefined) {
+      seatTarget.classList.add('drop-target');
+      dragState.targetIndex = parseInt(seatTarget.dataset.flatIndex, 10);
+    } else {
+      dragState.targetIndex = null;
+    }
+  }
+
+  function onDragPointerUp() {
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.body.classList.remove('drag-active');
+    el.convoyGrid.querySelectorAll('.seat.drop-target').forEach(function (s) { s.classList.remove('drop-target'); });
+    if (dragState && dragState.seatEl) {
+      dragState.seatEl.classList.remove('dragging');
+    }
+    if (dragState && dragState.targetIndex !== null) {
+      moveParticipant(dragState.participantId, dragState.targetIndex);
+    }
+    dragState = null;
+  }
+
+  el.convoyGrid.addEventListener('pointerdown', function (e) {
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+    const seatEl = handle.closest('.seat');
+    if (!seatEl || !seatEl.dataset.id) return;
+    e.preventDefault();
+
+    dragState = { participantId: seatEl.dataset.id, seatEl: seatEl, targetIndex: null };
+    seatEl.classList.add('dragging');
+    document.body.classList.add('drag-active');
+
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+  });
+
+  // Switches the page to another date and loads that date's bookings.
+  // Nothing is saved: the chosen date only affects this visitor's screen.
+  async function handleDateChange(date) {
+    await readyPromise;
+    if (!date || date === selectedDate) {
+      syncDateInput();
+      return;
+    }
+    selectedDate = date;
+    el.tripDateInput.value = date;
+    participants = [];
+    setFormMessage('', '');
+    render();
+    await reloadSelectedDate();
+  }
+
+  async function handleReset() {
+    await readyPromise;
+    const date = selectedDate;
+    if (!confirm('Clear every sign-up for ' + formatDateLong(date) + '? This cannot be undone.')) return;
+
+    participants = [];
+    render();
+
+    try {
+      applyState(await postAction('reset', { date: date }));
+    } catch (err) {
+      console.error('Reset failed', err);
+      alert('Could not reset: ' + err.message);
+      await reloadSelectedDate();
+    }
+  }
+
+  async function init() {
+    el.tripDateInput.value = selectedDate;
+    render();
+    await reloadSelectedDate();
+  }
+
+  const readyPromise = init();
+})();
+</script>
+
+</body>
+</html>
