@@ -195,15 +195,6 @@
     #joinForm { grid-template-columns: 1fr; }
   }
 
-  .reset-btn {
-    background: none;
-    border: none;
-    color: var(--locked);
-    font-size: 12px;
-    text-decoration: underline;
-    cursor: pointer;
-  }
-
   /* ---------- Convoy grid ---------- */
   .convoy-heading {
     display: flex;
@@ -425,15 +416,7 @@
 
 <footer>
   <p>Share this page's link with the group — everyone sees the same live sign-up list.</p>
-  <button class="reset-btn" id="resetBtn" type="button">Reset this date (clear its sign-ups)</button>
 </footer>
-
-<section id="debugPanel" style="max-width:920px;margin:0 auto 40px;padding:0 20px;">
-  <details open>
-    <summary style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#4A3B2A;cursor:pointer;">Debug log (temporary — for troubleshooting)</summary>
-    <pre id="debugLog" style="background:#1a1410;color:#9fd4a8;font-family:'Space Mono',monospace;font-size:11px;line-height:1.5;padding:12px;border-radius:8px;max-height:260px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px;"></pre>
-  </details>
-</section>
 
 <script>
 (function () {
@@ -441,7 +424,7 @@
   const API_BASE = 'api.php';
   const SEATS_PER_BUGGY = 4;
 
-  // The date shown in the date picker. Every booking, cancellation, seat move and reset
+  // The date shown in the date picker. Every booking, cancellation and seat move
   // applies to this date only. Each visitor's page opens on today.
   let selectedDate = localDateString(0);
   let participants = [];
@@ -455,21 +438,8 @@
     tripDateInput: document.getElementById('tripDateInput'),
     todayBtn: document.getElementById('todayBtn'),
     tomorrowBtn: document.getElementById('tomorrowBtn'),
-    resetBtn: document.getElementById('resetBtn'),
     convoyGrid: document.getElementById('convoyGrid'),
-    debugLog: document.getElementById('debugLog'),
   };
-
-  function logDebug(msg) {
-    const now = new Date();
-    const time = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
-    const line = '[' + time + '] ' + msg;
-    console.log(line);
-    if (el.debugLog) {
-      el.debugLog.textContent += line + '\n';
-      el.debugLog.scrollTop = el.debugLog.scrollHeight;
-    }
-  }
 
   // YYYY-MM-DD in the visitor's own time zone. (toISOString() uses UTC, which gives
   // yesterday's date between 00:00 and 02:00 in Germany.)
@@ -491,16 +461,13 @@
   el.tripDateInput.addEventListener('change', function () { handleDateChange(el.tripDateInput.value); });
   el.todayBtn.addEventListener('click', function () { handleDateChange(localDateString(0)); });
   el.tomorrowBtn.addEventListener('click', function () { handleDateChange(localDateString(1)); });
-  el.resetBtn.addEventListener('click', handleReset);
 
   async function readJson(res, label) {
     const rawText = await res.text();
-    logDebug(label + ' response [' + res.status + ']: ' + rawText);
     let body;
     try {
       body = JSON.parse(rawText);
     } catch (parseErr) {
-      logDebug(label + ' response was not valid JSON: ' + parseErr.message);
       throw new Error('Response was not valid JSON (status ' + res.status + ')');
     }
     if (!res.ok) throw new Error(body.error || 'Request failed');
@@ -511,15 +478,13 @@
   // any layer (browser or host) caching this GET.
   async function fetchState(date) {
     const url = API_BASE + '?action=state&date=' + encodeURIComponent(date) + '&_=' + Date.now();
-    logDebug('GET ' + url);
     const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
     return readJson(res, 'GET');
   }
 
-  // Sends a POST action (join / cancel / reorder / reset) and returns { date, participants }.
+  // Sends a POST action (join / cancel / reorder) and returns { date, participants }.
   async function postAction(action, data) {
     const payload = JSON.stringify(Object.assign({ action: action }, data || {}));
-    logDebug('POST ' + API_BASE + ' body=' + payload);
     const res = await fetch(API_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -532,7 +497,6 @@
   // (the visitor may have switched dates while the request was running).
   function applyState(state) {
     if (!state || state.date !== selectedDate) {
-      logDebug('Ignored response for ' + (state && state.date) + ' (showing ' + selectedDate + ')');
       return;
     }
     participants = state.participants || [];
@@ -638,8 +602,6 @@
   }
 
   function render() {
-    logDebug('render() date=' + selectedDate + ' participants.length=' + participants.length +
-      ' [' + participants.map(function (p) { return p.name; }).join(', ') + ']');
     syncDateInput();
     renderConvoy();
   }
@@ -779,23 +741,6 @@
     setFormMessage('', '');
     render();
     await reloadSelectedDate();
-  }
-
-  async function handleReset() {
-    await readyPromise;
-    const date = selectedDate;
-    if (!confirm('Clear every sign-up for ' + formatDateLong(date) + '? This cannot be undone.')) return;
-
-    participants = [];
-    render();
-
-    try {
-      applyState(await postAction('reset', { date: date }));
-    } catch (err) {
-      console.error('Reset failed', err);
-      alert('Could not reset: ' + err.message);
-      await reloadSelectedDate();
-    }
   }
 
   async function init() {

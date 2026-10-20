@@ -5,7 +5,6 @@
 //   POST {"action":"join","date":"YYYY-MM-DD","name":"...","pickup":"..."}
 //   POST {"action":"cancel","id":123}
 //   POST {"action":"reorder","date":"YYYY-MM-DD","order":[ids...]}
-//   POST {"action":"reset","date":"YYYY-MM-DD"}                   -> clears that date only
 //
 // Storage: one SQLite file, created automatically on the first request.
 //   On Azure App Service: /home/data/buggy-trip.sqlite (persistent, outside the web root, so it
@@ -35,18 +34,10 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     return true; // keep warnings out of the JSON response
 });
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
 
 if (!extension_loaded('pdo_sqlite')) {
     sendJson(['error' => 'The PHP pdo_sqlite extension is not available on this server.'], 500);
@@ -255,15 +246,6 @@ switch ($action) {
             sendError('Could not save the new seating.', 500);
         }
 
-        sendState($db, $date);
-        break;
-
-    case 'reset':
-        $date = parseDate($input['date'] ?? '');
-        if ($date === null) {
-            sendError('A valid date (YYYY-MM-DD) is required.', 400);
-        }
-        $db->prepare('DELETE FROM participants WHERE ride_date = ?')->execute([$date]);
         sendState($db, $date);
         break;
 
