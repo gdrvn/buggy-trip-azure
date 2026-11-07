@@ -1,0 +1,16 @@
+# Local test server: docker compose up, then open http://localhost:8080 (group password: dune)
+services:
+  web:
+    image: php:8.3-cli
+    working_dir: /app
+    command: php -S 0.0.0.0:8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - buggy-data:/data
+    environment:
+      SITE_PASSWORD: dune
+      BUGGY_DB_PATH: /data/buggy-trip.sqlite
+volumes:
+  buggy-data:
