@@ -1,8 +1,22 @@
 <?php
 // Database schema. Version 2 replaces the old name-only `participants` table (its rows are dropped).
+// Version 3: a vehicle is first planned, then booked (booked_by/booked_at NULL = only planned).
 defined('BUGGY') or exit;
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
+
+const VEHICLES_TABLE = 'CREATE TABLE IF NOT EXISTS vehicles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ride_date TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN (\'buggy\', \'hilux\')),
+    price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+    position INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    booked_by INTEGER REFERENCES users(id),
+    booked_at TEXT,
+    paid_by INTEGER REFERENCES users(id),
+    paid_at TEXT
+)';
 
 function migrate(PDO $db) {
     $version = (int) $db->query('PRAGMA user_version')->fetchColumn();
@@ -11,6 +25,19 @@ function migrate(PDO $db) {
     }
     $db->beginTransaction();
     try {
+        if ($version === 2) {
+            // v2 vehicles were always booked; keep them, but allow planned (unbooked) ones from now on.
+            $db->exec('ALTER TABLE vehicles RENAME TO vehicles_v2');
+            $db->exec(VEHICLES_TABLE);
+            $db->exec('INSERT INTO vehicles (id, ride_date, type, price_cents, position, created_by, booked_by, booked_at, paid_by, paid_at)
+                       SELECT id, ride_date, type, price_cents, position, booked_by, booked_by, booked_at, paid_by, paid_at FROM vehicles_v2');
+            $db->exec('DROP TABLE vehicles_v2');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_vehicles_date ON vehicles (ride_date, position)');
+            $db->exec('PRAGMA user_version = ' . SCHEMA_VERSION);
+            $db->commit();
+            return;
+        }
+
         $db->exec('DROP TABLE IF EXISTS participants');
 
         $db->exec('CREATE TABLE IF NOT EXISTS users (
@@ -35,17 +62,7 @@ function migrate(PDO $db) {
         $db->exec('CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings (ride_date, position)');
         $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_self ON bookings (ride_date, user_id) WHERE guest_name IS NULL');
 
-        $db->exec('CREATE TABLE IF NOT EXISTS vehicles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ride_date TEXT NOT NULL,
-            type TEXT NOT NULL CHECK (type IN (\'buggy\', \'hilux\')),
-            price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
-            position INTEGER NOT NULL DEFAULT 0,
-            booked_by INTEGER NOT NULL REFERENCES users(id),
-            booked_at TEXT NOT NULL,
-            paid_by INTEGER REFERENCES users(id),
-            paid_at TEXT
-        )');
+        $db->exec(VEHICLES_TABLE);
         $db->exec('CREATE INDEX IF NOT EXISTS idx_vehicles_date ON vehicles (ride_date, position)');
 
         $db->exec('CREATE TABLE IF NOT EXISTS settlements (

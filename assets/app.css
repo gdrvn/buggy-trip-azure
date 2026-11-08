@@ -289,6 +289,7 @@ body.is-loading .app { visibility: hidden; }
   background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
   background-size: 18px 18px;
 }
+.fleet-hint { margin: -6px 0 6px; color: var(--ink-2); font-size: 14px; max-width: 60ch; }
 .stage-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; min-height: 36px; flex-wrap: wrap; }
 .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -309,10 +310,13 @@ body.is-loading .app { visibility: hidden; }
 .vb-tyre { fill: var(--tyre); }
 .vb-light { fill: var(--sun); }
 
-.vehicle.is-proposed .vehicle-body { filter: none; }
-.vehicle.is-proposed .vb-body { fill: transparent; stroke-dasharray: 7 7; stroke-width: 2.5; opacity: 0.7; }
-.vehicle.is-proposed .vb-tyre { fill: none; stroke: var(--body-stroke); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.5; }
-.vehicle.is-proposed .vb-glass, .vehicle.is-proposed .vb-light { opacity: 0; }
+.vehicle.is-suggested .vehicle-body, .vehicle.is-planned .vehicle-body { filter: none; }
+.vehicle.is-suggested .vb-body { fill: transparent; stroke-dasharray: 7 7; stroke-width: 2.5; opacity: 0.7; }
+.vehicle.is-suggested .vb-tyre { fill: none; stroke: var(--body-stroke); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.5; }
+.vehicle.is-suggested .vb-glass, .vehicle.is-suggested .vb-light { opacity: 0; }
+.vehicle.is-planned .vb-body { stroke-dasharray: 9 6; }
+.vehicle.is-planned .vb-tyre { opacity: 0.55; }
+.vehicle.is-planned .vb-light { opacity: 0.3; }
 .vehicle.is-paid .vb-body { stroke: var(--teal); }
 
 .seat {
@@ -354,8 +358,10 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
   font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
 }
 .chip .icon { width: 14px; height: 14px; stroke-width: 2.25; }
-.chip-proposed { border: 1.5px dashed var(--line-strong); color: var(--ink-2); }
-.chip-booked { background: var(--rust-wash); color: var(--rust); }
+.chip-suggested { border: 1.5px dashed var(--line-strong); color: var(--ink-2); }
+.chip-planned { background: var(--surface-2); color: var(--ink-2); }
+.chip .icon { width: 13px; height: 13px; }
+.chip-booked { background: var(--rust-wash); color: var(--rust); text-transform: none; letter-spacing: 0; max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip-paid { background: var(--teal-wash); color: var(--teal); text-transform: none; letter-spacing: 0; }
 
 .price {

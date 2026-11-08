@@ -373,7 +373,7 @@
       meta.append('Nobody has joined yet.');
     } else {
       meta.append(money(sm.totalCents) + ' for ' + sm.riders + (sm.riders === 1 ? ' rider' : ' riders'));
-      if (!day.vehicles.length) meta.append(h('span', { class: 'est' }, ' · estimate from the proposal'));
+      if (!day.vehicles.length) meta.append(h('span', { class: 'est' }, ' · estimate from the suggestion'));
       else if (sm.paidCents < sm.totalCents) meta.append(h('span', { class: 'est' }, ' · ' + money(sm.paidCents) + ' paid so far'));
       else meta.append(h('span', { class: 'est' }, ' · all paid'));
     }
@@ -383,26 +383,43 @@
     renderActionBar();
   }
 
+  // The day's plan: stored vehicles, or (while nobody has edited it) the automatic suggestion.
+  // Each item carries how the API addresses it: {id} for stored, {index} for suggested.
+  function planOf(day) {
+    if (day.vehicles.length) return day.vehicles.map((v) => ({ type: v.type, v, key: v.id, ref: { id: v.id }, state: v.status }));
+    return day.suggestion.map((type, i) => ({ type, v: null, key: 's' + i, ref: { index: i }, state: 'suggested' }));
+  }
+  const firstName = (n) => n.split(' ')[0];
+
   function renderFleet(prevIds) {
     const day = S.day;
     const fleet = $('fleet');
     const actions = $('stageActions');
     fleet.innerHTML = '';
     actions.innerHTML = '';
-    const booked = day.vehicles.length > 0;
-    const types = booked ? day.vehicles.map((v) => v.type) : day.proposal;
+    const items = planOf(day);
+    const types = items.map((p) => p.type);
 
-    if (!booked && day.proposal.length) {
-      const names = day.proposal.map((t) => S.types[t].label);
-      actions.append(
-        h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: (e) => act('book_proposal', {}, e.currentTarget, 'Fleet booked') },
-          icon('check'), 'Book ' + (names.length > 1 ? 'this fleet' : 'the ' + names[0].toLowerCase())));
+    if (day.replan) {
+      const label = day.replan.map((t) => S.types[t].label).join(' + ') || 'no vehicles';
+      actions.append(h('button', {
+        type: 'button', class: 'btn btn-quiet btn-sm', title: 'Replace the unbooked vehicles with: ' + label,
+        onclick: (e) => act('apply_suggestion', {}, e.currentTarget, 'Plan matched to riders'),
+      }, icon('undo'), 'Re-suggest'));
     }
-    if (booked || day.riders.length) {
+    if (items.length || day.riders.length) {
       actions.append(
         h('button', { type: 'button', class: 'btn btn-quiet btn-sm', onclick: (e) => act('add_vehicle', { type: 'buggy' }, e.currentTarget) }, icon('plus'), 'Buggy'),
         h('button', { type: 'button', class: 'btn btn-quiet btn-sm', onclick: (e) => act('add_vehicle', { type: 'hilux' }, e.currentTarget) }, icon('plus'), 'Hilux'));
     }
+
+    const hint = $('fleetHint');
+    const open = items.filter((p) => p.state === 'suggested' || p.state === 'planned').length;
+    hint.hidden = !items.length;
+    hint.textContent = !items.length ? ''
+      : !day.vehicles.length ? 'Suggested for ' + day.riders.length + (day.riders.length === 1 ? ' rider' : ' riders') + ' and updates as people join. Change it freely; mark each vehicle booked once it’s reserved.'
+      : open ? open + (open === 1 ? ' vehicle is' : ' vehicles are') + ' planned but not booked yet.'
+      : 'Every vehicle is booked.';
 
     if (!types.length) {
       fleet.appendChild(h('div', { class: 'fleet-empty' },
@@ -415,9 +432,9 @@
     const { plan, overflow } = seatPlan(types, day.riders);
     const canDrag = !day.locked;
     const counts = {};
-    types.forEach((type, i) => {
+    items.forEach((item, i) => {
+      const type = item.type;
       counts[type] = (counts[type] || 0) + 1;
-      const v = booked ? day.vehicles[i] : null;
       const draw = DRAWINGS[type];
       const seatsEl = [];
       const [dx, dy] = draw.seats[0];
@@ -445,11 +462,10 @@
       seatsEl.forEach((el) => body.appendChild(el));
 
       const filled = plan[i].filter((x) => x.rider).length;
-      const state = !v ? 'proposed' : v.paidBy ? 'paid' : 'booked';
       const name = h('div', { class: 'vehicle-name' }, S.types[type].label + (types.filter((t) => t === type).length > 1 ? ' ' + counts[type] : ''),
         h('small', null, filled + '/' + S.types[type].seats));
-      const metaEl = h('div', { class: 'vehicle-meta' }, name, statusChip(v), priceEl(v, type), vehicleActions(v));
-      fleet.appendChild(h('article', { class: 'vehicle is-' + state, 'data-type': type, style: 'animation-delay:' + i * 70 + 'ms' }, body, metaEl));
+      const metaEl = h('div', { class: 'vehicle-meta' }, name, statusChip(item), priceEl(item), vehicleActions(item));
+      fleet.appendChild(h('article', { class: 'vehicle is-' + item.state, 'data-type': type, style: 'animation-delay:' + i * 70 + 'ms' }, body, metaEl));
     });
 
     const note = $('overflowNote');
@@ -466,25 +482,29 @@
     }
   }
 
-  function statusChip(v) {
-    if (!v) return h('span', { class: 'chip chip-proposed' }, 'Proposed');
-    if (v.paidBy) return h('span', { class: 'chip chip-paid' }, icon('check'), 'Paid by ' + (v.paidBy.id === S.me.id ? 'you' : v.paidBy.name));
-    return h('span', { class: 'chip chip-booked' }, 'Booked');
+  function statusChip(item) {
+    const v = item.v;
+    const who = (u) => (u.id === S.me.id ? 'you' : firstName(u.name));
+    if (item.state === 'suggested') return h('span', { class: 'chip chip-suggested' }, 'Suggested');
+    if (item.state === 'planned') return h('span', { class: 'chip chip-planned' }, 'Planned');
+    if (item.state === 'paid') return h('span', { class: 'chip chip-paid' }, icon('check'), 'Paid by ' + who(v.paidBy));
+    return h('span', { class: 'chip chip-booked', title: v.bookedBy ? 'Booked by ' + v.bookedBy.name : '' }, icon('lock'), 'Booked' + (v.bookedBy ? ' · ' + who(v.bookedBy) : ''));
   }
 
-  function priceEl(v, type) {
-    if (!v) return h('span', { class: 'price' }, money(S.types[type].defaultPriceCents));
-    const mayEdit = !v.paidBy || v.paidBy.id === S.me.id;
-    if (S.editingPrice === v.id || S.payingId === v.id) {
-      const paying = S.payingId === v.id;
-      const input = h('input', { type: 'number', min: '0', step: '0.01', inputmode: 'decimal', value: (v.priceCents / 100).toString(), 'aria-label': 'Price in reais' });
+  function priceEl(item) {
+    const v = item.v;
+    const cents = v ? v.priceCents : S.types[item.type].defaultPriceCents;
+    const mayEdit = !v || !v.paidBy || v.paidBy.id === S.me.id;
+    if (S.editingPrice === item.key || S.payingId === item.key) {
+      const paying = S.payingId === item.key;
+      const input = h('input', { type: 'number', min: '0', step: '0.01', inputmode: 'decimal', value: (cents / 100).toString(), 'aria-label': 'Price in reais' });
       const form = h('form', {
         class: 'price-edit',
         onsubmit: (e) => {
           e.preventDefault();
           const btn = form.querySelector('button[type=submit]');
-          if (paying) act('pay_vehicle', { id: v.id, price: input.value }, btn, 'Marked as paid by you');
-          else act('update_vehicle', { id: v.id, price: input.value }, btn, 'Price saved');
+          if (paying) act('pay_vehicle', Object.assign({ price: input.value }, item.ref), btn, 'Marked as paid by you');
+          else act('update_vehicle', Object.assign({ price: input.value }, item.ref), btn, 'Price saved');
         },
       }, h('span', null, 'R$'), input,
       h('button', { type: 'submit', class: 'btn btn-sm ' + (paying ? 'btn-teal' : 'btn-primary') }, paying ? 'I paid' : 'Save'),
@@ -492,30 +512,42 @@
       setTimeout(() => { input.focus(); input.select(); }, 0);
       return form;
     }
-    if (!mayEdit) return h('span', { class: 'price' }, money(v.priceCents));
-    return h('button', { type: 'button', class: 'price', title: 'Change the price', onclick: () => { S.editingPrice = v.id; S.payingId = null; renderFleet(); } }, money(v.priceCents));
+    if (!mayEdit) return h('span', { class: 'price' }, money(cents));
+    return h('button', { type: 'button', class: 'price', title: 'Change the price', onclick: () => { S.editingPrice = item.key; S.payingId = null; renderFleet(); } }, money(cents));
   }
 
-  function vehicleActions(v) {
-    if (!v || S.editingPrice === v.id || S.payingId === v.id) return null;
+  // Suggested/planned → "Mark booked" · booked → "I paid" or un-book · paid → payer can undo.
+  function vehicleActions(item) {
+    const v = item.v;
+    if (S.editingPrice === item.key || S.payingId === item.key) return null;
     const wrap = h('div', { class: 'vehicle-actions' });
-    if (v.paidBy) {
+    if (item.state === 'paid') {
       if (v.paidBy.id === S.me.id) {
         wrap.append(h('button', { type: 'button', class: 'btn btn-quiet btn-sm', onclick: (e) => act('unpay_vehicle', { id: v.id }, e.currentTarget, 'Payment removed') }, icon('undo'), 'Undo payment'));
       }
       return wrap;
     }
-    if (S.confirm && S.confirm.kind === 'vehicle' && S.confirm.id === v.id) {
+    if (S.confirm && S.confirm.kind === 'vehicle' && S.confirm.id === item.key) {
       wrap.append(
-        h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: (e) => act('remove_vehicle', { id: v.id }, e.currentTarget, 'Vehicle removed') }, 'Remove'),
+        h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: (e) => act('remove_vehicle', item.ref, e.currentTarget, 'Vehicle removed') }, 'Remove'),
         h('button', { type: 'button', class: 'btn btn-quiet btn-sm', onclick: () => { S.confirm = null; renderFleet(); } }, 'Keep'));
       return wrap;
     }
-    const other = v.type === 'buggy' ? 'hilux' : 'buggy';
+    const other = item.type === 'buggy' ? 'hilux' : 'buggy';
+    const swap = h('button', { type: 'button', class: 'icon-btn', title: 'Switch to ' + S.types[other].label, 'aria-label': 'Switch to ' + S.types[other].label, onclick: (e) => act('update_vehicle', Object.assign({ type: other }, item.ref), e.currentTarget) }, icon('swap'));
+    if (item.state === 'booked') {
+      wrap.append(
+        h('button', { type: 'button', class: 'btn btn-teal btn-sm', onclick: () => { S.payingId = item.key; S.editingPrice = null; renderFleet(); } }, icon('check'), 'I paid'),
+        h('button', { type: 'button', class: 'icon-btn', title: 'Not booked after all', 'aria-label': 'Mark as not booked', onclick: (e) => act('unbook_vehicle', item.ref, e.currentTarget, 'Back to planned') }, icon('undo')),
+        swap,
+        // Removing a booked vehicle asks first; planned ones go straight away.
+        h('button', { type: 'button', class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove vehicle', onclick: () => { S.confirm = { kind: 'vehicle', id: item.key }; renderFleet(); } }, icon('trash')));
+      return wrap;
+    }
     wrap.append(
-      h('button', { type: 'button', class: 'btn btn-teal btn-sm', onclick: () => { S.payingId = v.id; S.editingPrice = null; renderFleet(); } }, icon('check'), 'I paid'),
-      h('button', { type: 'button', class: 'icon-btn', title: 'Switch to ' + S.types[other].label, 'aria-label': 'Switch to ' + S.types[other].label, onclick: (e) => act('update_vehicle', { id: v.id, type: other }, e.currentTarget) }, icon('swap')),
-      h('button', { type: 'button', class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove vehicle', onclick: () => { S.confirm = { kind: 'vehicle', id: v.id }; renderFleet(); } }, icon('trash')));
+      h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: (e) => act('book_vehicle', item.ref, e.currentTarget, S.types[item.type].label + ' marked as booked') }, icon('lock'), 'Mark booked'),
+      swap,
+      h('button', { type: 'button', class: 'icon-btn', title: 'Remove', 'aria-label': 'Remove vehicle', onclick: (e) => act('remove_vehicle', item.ref, e.currentTarget) }, icon('trash')));
     return wrap;
   }
 
@@ -566,11 +598,11 @@
           h('span', null, day.riders.length ? '≈ ' + money(day.summary.perPersonCents) + ' each' : 'Start the convoy')),
         h('button', { type: 'button', class: 'btn btn-primary', onclick: () => openSheet('join') }, 'Join ' + dayShort));
     } else {
-      const { plan } = seatPlan(day.vehicles.length ? day.vehicles.map((v) => v.type) : day.proposal, day.riders);
+      const { plan } = seatPlan(planOf(day).map((p) => p.type), day.riders);
       let where = 'no seat yet';
       plan.forEach((seats, i) => seats.forEach((s, j) => {
         if (s.rider && s.rider.id === mine.id) {
-          const t = day.vehicles.length ? day.vehicles[i].type : day.proposal[i];
+          const t = planOf(day)[i].type;
           where = S.types[t].label + ', seat ' + (j + 1);
         }
       }));

@@ -3,7 +3,8 @@
 //   GET  api.php?action=me | state&date=YYYY-MM-DD | calendar&from=..&to=.. | balances
 //   POST {"action": "..."} with header X-CSRF-Token (from "me"):
 //        register, login, logout, join, add_guest, cancel, reorder,
-//        book_proposal, add_vehicle, update_vehicle, remove_vehicle, pay_vehicle, unpay_vehicle,
+//        apply_suggestion, add_vehicle, update_vehicle, remove_vehicle, book_vehicle, unbook_vehicle,
+//        pay_vehicle, unpay_vehicle (vehicle actions take {id}, or {date, index} for a suggested vehicle),
 //        settle_add, settle_delete
 // Everything requires the site password (index.php sets it in the session); all but
 // me/register/login require a signed-in member.
@@ -154,6 +155,61 @@ function vehicleRow($db, $id) {
     return $v;
 }
 
+function dayVehicleRows($db, $date) {
+    $stmt = $db->prepare('SELECT * FROM vehicles WHERE ride_date = ? ORDER BY position, id');
+    $stmt->execute([$date]);
+    return $stmt->fetchAll();
+}
+
+function riderCount($db, $date) {
+    $stmt = $db->prepare('SELECT COUNT(*) FROM bookings WHERE ride_date = ?');
+    $stmt->execute([$date]);
+    return (int) $stmt->fetchColumn();
+}
+
+function insertPlanned($db, $date, $type, $me) {
+    $db->prepare('INSERT INTO vehicles (ride_date, type, price_cents, position, created_by) VALUES (?, ?, ?, ?, ?)')
+        ->execute([$date, $type, VEHICLE_TYPES[$type]['defaultPriceCents'], nextPosition($db, 'vehicles', $date), $me['id']]);
+}
+
+// While a day has no stored vehicles, the plan is the automatic suggestion. The first edit turns
+// that suggestion into stored, planned (not yet booked) vehicles, so the edit applies on top of it.
+function materializePlan($db, $date, $me) {
+    if (dayVehicleRows($db, $date)) {
+        return;
+    }
+    foreach (proposeFleet(riderCount($db, $date)) as $type) {
+        insertPlanned($db, $date, $type, $me);
+    }
+}
+
+// What "match riders" produces: booked/paid vehicles stay, the rest is re-suggested for whoever
+// the booked vehicles can't seat.
+function replanTypes(array $rows, $riders) {
+    $kept = [];
+    foreach ($rows as $v) {
+        if ($v['booked_at'] !== null || $v['paid_by'] !== null) {
+            $kept[] = $v['type'];
+        }
+    }
+    return array_merge($kept, proposeFleet(max(0, $riders - fleetSeats($kept))));
+}
+
+// A vehicle action targets a stored vehicle by id, or a suggested one by its index in the plan.
+function targetVehicle($db, array $input, $me) {
+    if (!empty($input['id'])) {
+        return vehicleRow($db, $input['id']);
+    }
+    $date = requireDate($input['date'] ?? '');
+    materializePlan($db, $date, $me);
+    $rows = dayVehicleRows($db, $date);
+    $index = (int) ($input['index'] ?? -1);
+    if (!isset($rows[$index])) {
+        fail('This vehicle no longer exists — refresh.', 404);
+    }
+    return $rows[$index];
+}
+
 function nextPosition($db, $table, $date) {
     $stmt = $db->prepare("SELECT COALESCE(MAX(position), -1) + 1 FROM $table WHERE ride_date = ?");
     $stmt->execute([$date]);
@@ -180,49 +236,56 @@ function dayState($db, $date) {
         ];
     }
 
-    $stmt = $db->prepare('SELECT * FROM vehicles WHERE ride_date = ? ORDER BY position, id');
-    $stmt->execute([$date]);
+    $rows = dayVehicleRows($db, $date);
     $vehicles = [];
-    $bookedTotal = 0;
+    $planTotal = 0;
     $paidTotal = 0;
-    foreach ($stmt->fetchAll() as $v) {
+    foreach ($rows as $v) {
         $paidBy = $v['paid_by'] !== null ? (int) $v['paid_by'] : null;
+        $bookedBy = $v['booked_by'] !== null ? (int) $v['booked_by'] : null;
         $vehicles[] = [
             'id' => (int) $v['id'],
             'type' => $v['type'],
             'seats' => VEHICLE_TYPES[$v['type']]['seats'],
             'priceCents' => (int) $v['price_cents'],
-            'bookedBy' => $names[(int) $v['booked_by']] ?? '?',
+            'status' => $paidBy ? 'paid' : ($v['booked_at'] !== null ? 'booked' : 'planned'),
+            'bookedBy' => $bookedBy ? ['id' => $bookedBy, 'name' => $names[$bookedBy] ?? '?'] : null,
             'paidBy' => $paidBy ? ['id' => $paidBy, 'name' => $names[$paidBy] ?? '?'] : null,
             'paidAt' => $v['paid_at'],
         ];
-        $bookedTotal += (int) $v['price_cents'];
+        $planTotal += (int) $v['price_cents'];
         if ($paidBy) {
             $paidTotal += (int) $v['price_cents'];
         }
     }
 
-    $proposal = proposeFleet(count($riders));
-    $proposalTotal = 0;
-    foreach ($proposal as $t) {
-        $proposalTotal += VEHICLE_TYPES[$t]['defaultPriceCents'];
-    }
-    $estimate = $vehicles ? $bookedTotal : $proposalTotal;
     $n = count($riders);
+    $suggestion = proposeFleet($n);
+    $suggestionTotal = 0;
+    foreach ($suggestion as $t) {
+        $suggestionTotal += VEHICLE_TYPES[$t]['defaultPriceCents'];
+    }
+    $estimate = $vehicles ? $planTotal : $suggestionTotal;
+    // Offer "match riders" only when it would actually change something.
+    $replan = $rows ? replanTypes($rows, $n) : null;
+    if ($replan !== null && $replan === array_column($rows, 'type')) {
+        $replan = null;
+    }
 
     return [
         'date' => $date,
         'locked' => isLocked($date),
         'riders' => $riders,
         'vehicles' => $vehicles,
-        'proposal' => $proposal,
+        'suggestion' => $suggestion,
+        'replan' => $replan,
         'summary' => [
             'riders' => $n,
-            'seats' => $vehicles ? array_sum(array_column($vehicles, 'seats')) : fleetSeats($proposal),
+            'seats' => $vehicles ? array_sum(array_column($vehicles, 'seats')) : fleetSeats($suggestion),
             'totalCents' => $estimate,
             'paidCents' => $paidTotal,
             'perPersonCents' => $n ? (int) ceil($estimate / $n) : 0,
-            'estimated' => !$vehicles || $paidTotal < $bookedTotal,
+            'estimated' => !$vehicles || $paidTotal < $planTotal,
         ],
     ];
 }
@@ -375,27 +438,19 @@ switch ($action) {
         $db->commit();
         sendDay($db, $date);
 
-    case 'book_proposal':
+    case 'apply_suggestion':
         $me = requireUser($db);
         $date = requireDate($input['date'] ?? '');
-        $stmt = $db->prepare('SELECT COUNT(*) FROM vehicles WHERE ride_date = ?');
-        $stmt->execute([$date]);
-        if ((int) $stmt->fetchColumn() > 0) {
-            fail('Vehicles are already booked for this day — refresh.', 409);
-        }
-        $stmt = $db->prepare('SELECT COUNT(*) FROM bookings WHERE ride_date = ?');
-        $stmt->execute([$date]);
-        $fleet = proposeFleet((int) $stmt->fetchColumn());
-        if (!$fleet) {
-            fail('Nobody has joined this day yet.');
-        }
+        $rows = dayVehicleRows($db, $date);
+        $types = $rows ? replanTypes($rows, riderCount($db, $date)) : proposeFleet(riderCount($db, $date));
         $db->beginTransaction();
-        $ins = $db->prepare('INSERT INTO vehicles (ride_date, type, price_cents, position, booked_by, booked_at) VALUES (?, ?, ?, ?, ?, ?)');
-        foreach ($fleet as $i => $type) {
-            $ins->execute([$date, $type, VEHICLE_TYPES[$type]['defaultPriceCents'], $i, $me['id'], date('Y-m-d H:i:s')]);
+        $db->prepare('DELETE FROM vehicles WHERE ride_date = ? AND booked_at IS NULL AND paid_by IS NULL')->execute([$date]);
+        $kept = count(dayVehicleRows($db, $date));
+        foreach (array_slice($types, $kept) as $type) {
+            insertPlanned($db, $date, $type, $me);
         }
         $db->commit();
-        sendDay($db, $date, 201);
+        sendDay($db, $date);
 
     case 'add_vehicle':
         $me = requireUser($db);
@@ -404,13 +459,16 @@ switch ($action) {
         if (!isset(VEHICLE_TYPES[$type])) {
             fail('Unknown vehicle type.');
         }
-        $db->prepare('INSERT INTO vehicles (ride_date, type, price_cents, position, booked_by, booked_at) VALUES (?, ?, ?, ?, ?, ?)')
-            ->execute([$date, $type, VEHICLE_TYPES[$type]['defaultPriceCents'], nextPosition($db, 'vehicles', $date), $me['id'], date('Y-m-d H:i:s')]);
+        $db->beginTransaction();
+        materializePlan($db, $date, $me);
+        insertPlanned($db, $date, $type, $me);
+        $db->commit();
         sendDay($db, $date, 201);
 
     case 'update_vehicle':
         $me = requireUser($db);
-        $v = vehicleRow($db, $input['id'] ?? 0);
+        $db->beginTransaction();
+        $v = targetVehicle($db, $input, $me);
         if ($v['paid_by'] !== null && (int) $v['paid_by'] !== $me['id']) {
             fail('Only ' . (userNames($db)[(int) $v['paid_by']] ?? 'the payer') . ' can change a paid vehicle.', 403);
         }
@@ -423,27 +481,54 @@ switch ($action) {
             $price = VEHICLE_TYPES[$type]['defaultPriceCents'];
         }
         $db->prepare('UPDATE vehicles SET type = ?, price_cents = ? WHERE id = ?')->execute([$type, $price, (int) $v['id']]);
+        $db->commit();
         sendDay($db, $v['ride_date']);
 
     case 'remove_vehicle':
+        $me = requireUser($db);
+        $db->beginTransaction();
+        $v = targetVehicle($db, $input, $me);
+        if ($v['paid_by'] !== null) {
+            fail('A paid vehicle can’t be removed — undo the payment first.', 403);
+        }
+        $db->prepare('DELETE FROM vehicles WHERE id = ?')->execute([(int) $v['id']]);
+        $db->commit();
+        sendDay($db, $v['ride_date']);
+
+    case 'book_vehicle':
+        $me = requireUser($db);
+        $db->beginTransaction();
+        $v = targetVehicle($db, $input, $me);
+        if ($v['booked_at'] === null) {
+            $db->prepare('UPDATE vehicles SET booked_by = ?, booked_at = ? WHERE id = ?')->execute([$me['id'], date('Y-m-d H:i:s'), (int) $v['id']]);
+        }
+        $db->commit();
+        sendDay($db, $v['ride_date']);
+
+    case 'unbook_vehicle':
         requireUser($db);
         $v = vehicleRow($db, $input['id'] ?? 0);
         if ($v['paid_by'] !== null) {
-            fail('A paid vehicle can’t be removed — unmark the payment first.', 403);
+            fail('This vehicle is paid — undo the payment first.', 409);
         }
-        $db->prepare('DELETE FROM vehicles WHERE id = ?')->execute([(int) $v['id']]);
+        $db->prepare('UPDATE vehicles SET booked_by = NULL, booked_at = NULL WHERE id = ?')->execute([(int) $v['id']]);
         sendDay($db, $v['ride_date']);
 
     case 'pay_vehicle':
         $me = requireUser($db);
-        $v = vehicleRow($db, $input['id'] ?? 0);
+        $db->beginTransaction();
+        $v = targetVehicle($db, $input, $me);
         if ($v['paid_by'] !== null) {
             fail('Already marked paid by ' . (userNames($db)[(int) $v['paid_by']] ?? 'someone') . '.', 409);
         }
         if (array_key_exists('price', $input)) {
             $db->prepare('UPDATE vehicles SET price_cents = ? WHERE id = ?')->execute([parsePriceCents($input['price']), (int) $v['id']]);
         }
-        $db->prepare('UPDATE vehicles SET paid_by = ?, paid_at = ? WHERE id = ?')->execute([$me['id'], date('Y-m-d H:i:s'), (int) $v['id']]);
+        $now = date('Y-m-d H:i:s');
+        // Paying for a vehicle means it is booked, too.
+        $db->prepare('UPDATE vehicles SET paid_by = ?, paid_at = ?, booked_by = COALESCE(booked_by, ?), booked_at = COALESCE(booked_at, ?) WHERE id = ?')
+            ->execute([$me['id'], $now, $me['id'], $now, (int) $v['id']]);
+        $db->commit();
         sendDay($db, $v['ride_date']);
 
     case 'unpay_vehicle':

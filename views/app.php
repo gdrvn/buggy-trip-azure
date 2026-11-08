@@ -86,6 +86,7 @@
             <h2 id="fleetHeading" class="h-label">Fleet</h2>
             <div class="stage-actions" id="stageActions"></div>
           </div>
+          <p class="fleet-hint" id="fleetHint" hidden></p>
           <div class="fleet" id="fleet"></div>
           <div class="overflow-note" id="overflowNote" hidden></div>
         </section>
