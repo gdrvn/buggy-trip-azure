@@ -359,7 +359,8 @@
     sub.innerHTML = '';
     if (rel) sub.appendChild(h('span', { class: 'pill' }, rel));
     if (day.locked) {
-      sub.appendChild(h('span', { class: 'pill is-locked' }, icon('lock'), 'Seats locked'));
+      sub.appendChild(h('span', { class: 'pill is-locked' }, icon('lock'), 'No more leaving'));
+      if (day.freeSeats !== null) sub.appendChild(h('span', null, day.freeSeats ? day.freeSeats + (day.freeSeats === 1 ? ' free seat' : ' free seats') + ' left for late joiners' : 'Booked vehicles are full'));
     } else {
       sub.appendChild(h('span', null, 'Seat changes close ' + fmt(isoDate(addDays(parseIso(day.date), -1)), { weekday: 'short' }) + ' 22:00'));
     }
@@ -595,8 +596,8 @@
       main.append(
         h('div', { class: 'actionbar-status' },
           h('strong', null, day.riders.length ? day.riders.length + ' riding' : 'Nobody riding yet'),
-          h('span', null, day.riders.length ? '≈ ' + money(day.summary.perPersonCents) + ' each' : 'Start the convoy')),
-        h('button', { type: 'button', class: 'btn btn-primary', onclick: () => openSheet('join') }, 'Join ' + dayShort));
+          h('span', null, day.freeSeats === 0 ? 'Full — planning closed' : day.riders.length ? '≈ ' + money(day.summary.perPersonCents) + ' each' : 'Start the convoy')),
+        h('button', { type: 'button', class: 'btn btn-primary', disabled: day.freeSeats === 0, onclick: () => openSheet('join') }, 'Join ' + dayShort));
     } else {
       const { plan } = seatPlan(planOf(day).map((p) => p.type), day.riders);
       let where = 'no seat yet';
@@ -608,7 +609,7 @@
       }));
       main.append(
         h('div', { class: 'actionbar-status' }, h('strong', null, 'You’re in'), h('span', null, where)),
-        h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => openSheet('guest') }, icon('user-plus'), 'Guest'));
+        h('button', { type: 'button', class: 'btn btn-ghost btn-sm', disabled: day.freeSeats === 0, title: day.freeSeats === 0 ? 'The booked vehicles are full' : '', onclick: () => openSheet('guest') }, icon('user-plus'), 'Guest'));
     }
   }
 

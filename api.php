@@ -210,6 +210,28 @@ function targetVehicle($db, array $input, $me) {
     return $rows[$index];
 }
 
+// After the 22:00 lock nobody can leave, but late riders may still take a free seat in the booked
+// vehicles. Returns the number of free seats, or null when nothing limits joining (before the lock,
+// or while no vehicle is booked yet).
+function lateFreeSeats($db, $date) {
+    if (!isLocked($date)) {
+        return null;
+    }
+    $booked = [];
+    foreach (dayVehicleRows($db, $date) as $v) {
+        if ($v['booked_at'] !== null || $v['paid_by'] !== null) {
+            $booked[] = $v['type'];
+        }
+    }
+    return $booked ? max(0, fleetSeats($booked) - riderCount($db, $date)) : null;
+}
+
+function requireSeatAfterLock($db, $date) {
+    if (lateFreeSeats($db, $date) === 0) {
+        fail('Planning closed at 22:00 and the booked vehicles are full.', 409);
+    }
+}
+
 function nextPosition($db, $table, $date) {
     $stmt = $db->prepare("SELECT COALESCE(MAX(position), -1) + 1 FROM $table WHERE ride_date = ?");
     $stmt->execute([$date]);
@@ -275,6 +297,7 @@ function dayState($db, $date) {
     return [
         'date' => $date,
         'locked' => isLocked($date),
+        'freeSeats' => lateFreeSeats($db, $date),
         'riders' => $riders,
         'vehicles' => $vehicles,
         'suggestion' => $suggestion,
@@ -383,6 +406,7 @@ switch ($action) {
         if ($stmt->fetchColumn()) {
             fail('You are already on this day.', 409);
         }
+        requireSeatAfterLock($db, $date);
         $db->prepare('INSERT INTO bookings (ride_date, user_id, guest_name, pickup, position, created_at) VALUES (?, ?, NULL, ?, ?, ?)')
             ->execute([$date, $me['id'], $pickup, nextPosition($db, 'bookings', $date), date('Y-m-d H:i:s')]);
         $db->prepare('UPDATE users SET default_pickup = ? WHERE id = ?')->execute([$pickup, $me['id']]);
@@ -393,6 +417,7 @@ switch ($action) {
         $date = requireDate($input['date'] ?? '');
         $guest = cleanText($input['name'] ?? '', 40, 'Guest name');
         $pickup = cleanText($input['pickup'] ?? '', 80, 'Pickup location');
+        requireSeatAfterLock($db, $date);
         $db->prepare('INSERT INTO bookings (ride_date, user_id, guest_name, pickup, position, created_at) VALUES (?, ?, ?, ?, ?, ?)')
             ->execute([$date, $me['id'], $guest, $pickup, nextPosition($db, 'bookings', $date), date('Y-m-d H:i:s')]);
         sendDay($db, $date, 201);
