@@ -178,8 +178,8 @@ button:disabled { cursor: not-allowed; }
 
 .entry {
   position: relative; z-index: 1; min-height: 100dvh;
-  display: grid; align-items: start; justify-items: center;
-  padding: max(10vh, 48px) 16px 48px;
+  display: grid; align-items: center; justify-items: center;
+  padding: 48px 16px 18vh;
 }
 .entry-card {
   width: min(400px, 100%);
@@ -206,7 +206,7 @@ body.is-loading .app { visibility: hidden; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 16px;
-  padding: 10px max(16px, env(safe-area-inset-left)) 10px;
+  padding: 10px max(16px, env(safe-area-inset-left), calc((100% - var(--page)) / 2 + 16px));
   background: color-mix(in srgb, var(--ground) 88%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
@@ -230,7 +230,8 @@ body.is-loading .app { visibility: hidden; }
   font: 700 12px/1 var(--text); letter-spacing: 0.02em;
 }
 
-.view { max-width: 1120px; margin: 0 auto; padding: 0 16px 140px; }
+:root { --page: 1200px; }
+.view { max-width: var(--page); margin: 0 auto; padding: 0 16px 140px; }
 
 /* ---------- Date strip ---------- */
 .datebar { display: flex; align-items: center; gap: 4px; padding: 14px 0 6px; }
@@ -291,7 +292,7 @@ body.is-loading .app { visibility: hidden; }
 .stage-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; min-height: 36px; flex-wrap: wrap; }
 .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.fleet { display: flex; flex-wrap: wrap; gap: 26px 22px; align-items: flex-end; justify-content: center; padding: 8px 0 4px; }
+.fleet { display: flex; flex-wrap: wrap; gap: 32px 40px; align-items: flex-end; justify-content: center; padding: 16px 0 12px; }
 
 .fleet-empty { padding: 36px 12px 28px; text-align: center; color: var(--ink-2); max-width: 36ch; margin: 0 auto; }
 .fleet-empty strong { display: block; font: 400 26px/1.1 var(--display); text-transform: uppercase; color: var(--ink); margin-bottom: 6px; }
@@ -299,8 +300,8 @@ body.is-loading .app { visibility: hidden; }
 /* ---------- Vehicles ---------- */
 .vehicle { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: rise 0.5s var(--ease) both; }
 .vehicle-body { position: relative; width: var(--w); aspect-ratio: var(--ar); filter: drop-shadow(0 10px 14px rgba(40, 22, 6, 0.22)); }
-.vehicle[data-type="buggy"] { --w: 176px; --ar: 200 / 290; }
-.vehicle[data-type="hilux"] { --w: 196px; --ar: 200 / 400; }
+.vehicle[data-type="buggy"] { --w: 220px; --ar: 200 / 290; }
+.vehicle[data-type="hilux"] { --w: 240px; --ar: 200 / 400; }
 .vehicle-body > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .vb-body { fill: var(--body-fill); stroke: var(--body-stroke); stroke-width: 3; }
 .vb-glass { fill: var(--ink); opacity: 0.16; }
@@ -437,17 +438,19 @@ button.price::after { content: "edit"; font-size: 11px; color: var(--ink-3); mar
 .panel-wide { grid-column: 1 / -1; }
 
 .transfers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.transfer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--surface-2); }
-.transfer.is-mine { background: var(--rust-wash); }
-.transfer.is-to-me { background: var(--teal-wash); }
+.transfers { gap: 0; }
+.transfer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.transfer:last-child { border-bottom: 0; }
+.transfer.is-mine { background: var(--rust-wash); border-radius: 14px; padding: 10px 8px 10px 12px; border-bottom-color: transparent; }
 .transfer-who { display: flex; align-items: center; gap: 6px; font-weight: 600; min-width: 0; }
 .transfer-who .icon { width: 16px; height: 16px; color: var(--ink-3); }
 .transfer-who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .transfer-amt { font-weight: 700; justify-self: end; }
 .transfer .btn { justify-self: end; }
 @media (max-width: 480px) {
-  .transfer { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .transfer .btn { grid-column: 2 / -1; justify-self: start; }
+  .transfer { gap: 8px; }
+  .transfer .btn { padding: 0 12px; }
+  .transfer.is-to-me .transfer-who > :not(:first-child) { display: none; }
 }
 .transfers-empty { color: var(--ink-2); padding: 6px 0; display: flex; align-items: center; gap: 8px; }
 .transfers-empty .icon { color: var(--teal); }
@@ -496,6 +499,13 @@ button.price::after { content: "edit"; font-size: 11px; color: var(--ink-3); mar
 .toast.is-error { background: var(--rust); color: var(--on-rust); }
 
 /* ---------- Responsive ---------- */
+@media (min-width: 901px) {
+  .actionbar { position: static; transform: none; width: auto; border-radius: 20px; padding: 14px; box-shadow: var(--shadow); }
+  .actionbar-main { flex-wrap: wrap; }
+  .actionbar-status { padding-left: 4px; }
+  #ridesView { padding-bottom: 64px; }
+}
+
 @media (max-width: 900px) {
   .day-grid { grid-template-columns: 1fr; }
   .side { position: static; }

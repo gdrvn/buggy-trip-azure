@@ -96,6 +96,27 @@
             <p class="cost-meta" id="costMeta"></p>
           </section>
 
+          <div class="actionbar" id="actionBar">
+            <form class="joinsheet" id="joinSheet" hidden>
+              <div class="joinsheet-row">
+                <label class="field">
+                  <span id="joinSheetLabel">Pickup location</span>
+                  <input id="pickupInput" type="text" maxlength="80" placeholder="Pousada, street, or meeting point" required>
+                </label>
+                <label class="field" id="guestField" hidden>
+                  <span>Guest’s name <small>their share is charged to you</small></span>
+                  <input id="guestInput" type="text" maxlength="40">
+                </label>
+              </div>
+              <div class="joinsheet-actions">
+                <button type="button" class="btn btn-ghost" id="joinCancel">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="joinConfirm">Join</button>
+              </div>
+            </form>
+            <div class="actionbar-main" id="actionMain"></div>
+            <p class="form-msg" id="dayMsg" role="status" aria-live="polite"></p>
+          </div>
+
           <section class="riders" aria-labelledby="ridersHeading">
             <h2 id="ridersHeading" class="h-label">Riding <span id="riderCount" class="count"></span></h2>
             <ul class="rider-list" id="riderList"></ul>
@@ -104,26 +125,6 @@
       </div>
     </div>
 
-    <div class="actionbar" id="actionBar">
-      <form class="joinsheet" id="joinSheet" hidden>
-        <div class="joinsheet-row">
-          <label class="field">
-            <span id="joinSheetLabel">Pickup location</span>
-            <input id="pickupInput" type="text" maxlength="80" placeholder="Pousada, street, or meeting point" required>
-          </label>
-          <label class="field" id="guestField" hidden>
-            <span>Guest’s name <small>their share is charged to you</small></span>
-            <input id="guestInput" type="text" maxlength="40">
-          </label>
-        </div>
-        <div class="joinsheet-actions">
-          <button type="button" class="btn btn-ghost" id="joinCancel">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="joinConfirm">Join</button>
-        </div>
-      </form>
-      <div class="actionbar-main" id="actionMain"></div>
-      <p class="form-msg" id="dayMsg" role="status" aria-live="polite"></p>
-    </div>
   </main>
 
   <!-- ---------- Money ---------- -->

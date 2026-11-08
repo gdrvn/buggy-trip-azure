@@ -14,7 +14,7 @@
         '<path class="vb-body" d="M62 12 H138 Q164 12 166 40 L174 248 Q174 278 146 278 H54 Q26 278 26 248 L34 40 Q36 12 62 12Z"/>' +
         '<circle class="vb-light" cx="68" cy="24" r="6"/><circle class="vb-light" cx="132" cy="24" r="6"/>' +
         '<path class="vb-line" d="M42 84 Q100 70 158 84 M42 160 Q100 150 158 160 M46 84 L48 160 M154 84 L152 160 M70 248 H130 M74 260 H126"/>',
-      seats: [[32, 40], [68, 40], [22, 70], [50, 70], [78, 70]],
+      seats: [[32, 40], [68, 40], [27, 70], [50, 70], [73, 70]],
     },
     hilux: {
       viewBox: '0 0 200 400',
@@ -725,9 +725,9 @@
       let btn = null;
       if (fromMe || toMe) {
         btn = h('button', {
-          type: 'button', class: 'btn btn-sm ' + (fromMe ? 'btn-primary' : 'btn-teal'),
+          type: 'button', class: 'btn btn-sm ' + (fromMe ? 'btn-primary' : 'btn-ghost'),
           onclick: (e) => settle({ from: t.from, to: t.to, amount: (t.amountCents / 100).toFixed(2), note: '' }, e.currentTarget),
-        }, icon('check'), fromMe ? 'I paid ' + t.toName : t.fromName + ' paid me');
+        }, icon('check'), fromMe ? 'I paid' : 'Received');
       }
       tl.appendChild(h('li', { class: 'transfer' + (fromMe ? ' is-mine' : '') + (toMe ? ' is-to-me' : '') },
         avatar(t.fromName, t.from),
