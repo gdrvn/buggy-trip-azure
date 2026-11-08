@@ -1,5 +1,6 @@
 <?php
 // Run: docker compose run --rm web php tests/fleet_ledger_test.php
+PHP_SAPI === 'cli' or exit;
 define('BUGGY', true);
 require __DIR__ . '/../lib/fleet.php';
 require __DIR__ . '/../lib/ledger.php';
