@@ -44,7 +44,7 @@
 
   const $ = (id) => document.getElementById(id);
   const S = {
-    me: null, csrf: '', types: {},
+    me: null, csrf: '', types: {}, clockSkew: 0,
     tab: 'rides',
     date: isoDate(addDays(new Date(), 1)),
     stripStart: isoDate(addDays(new Date(), -2)),
@@ -305,6 +305,7 @@
     }
   }
   function applyDay(day) {
+    if (day && day.serverNow) S.clockSkew = day.serverNow * 1000 - Date.now();
     if (day.date !== S.date) return;
     const prev = S.lastDate === day.date ? S.lastRiderIds : null;
     S.day = day;
@@ -349,6 +350,25 @@
     return { plan, overflow: riders.slice(Math.min(idx, riders.length)) };
   }
 
+  // Live countdown to the 22:00 lock. Uses the server's clock (phones can be off by minutes).
+  function updateCountdown() {
+    const el = $('lockCountdown');
+    const day = S.day;
+    if (!el || !day || day.locked) return;
+    const left = day.lockAt * 1000 - (Date.now() + S.clockSkew);
+    if (left <= 0) { el.textContent = 'Leaving is closing…'; loadDay(); return; }
+    const sec = Math.floor(left / 1000), d = Math.floor(sec / 86400), hrs = Math.floor(sec / 3600) % 24, m = Math.floor(sec / 60) % 60, s = sec % 60;
+    const when = fmt(isoDate(addDays(parseIso(day.date), -1)), { weekday: 'short' }) + ' 22:00';
+    let text;
+    if (d >= 2) text = 'You can leave until ' + when;
+    else if (sec >= 3600) text = 'Leaving closes in ' + (d ? d + 'd ' : '') + hrs + 'h ' + String(m).padStart(2, '0') + 'm';
+    else text = 'Leaving closes in ' + m + 'm ' + String(s).padStart(2, '0') + 's';
+    el.className = d >= 2 ? '' : 'pill is-countdown' + (sec < 3 * 3600 ? ' is-soon' : '');
+    el.title = 'At ' + when + ' (Brazil time) leaving and seat changes close. Late joiners can still take free seats.';
+    el.replaceChildren(...(d >= 2 ? [text] : [icon('clock'), text]));
+  }
+  setInterval(updateCountdown, 1000);
+
   function renderDay(prevIds) {
     const day = S.day;
     if (!day) return;
@@ -362,7 +382,8 @@
       sub.appendChild(h('span', { class: 'pill is-locked' }, icon('lock'), 'No more leaving'));
       if (day.freeSeats !== null) sub.appendChild(h('span', null, day.freeSeats ? day.freeSeats + (day.freeSeats === 1 ? ' free seat' : ' free seats') + ' left for late joiners' : 'Booked vehicles are full'));
     } else {
-      sub.appendChild(h('span', null, 'Seat changes close ' + fmt(isoDate(addDays(parseIso(day.date), -1)), { weekday: 'short' }) + ' 22:00'));
+      sub.appendChild(h('span', { id: 'lockCountdown' }));
+      updateCountdown();
     }
 
     // Cost
@@ -592,23 +613,35 @@
     if (S.sheet) return;
 
     const dayShort = fmt(day.date, { weekday: 'short', day: 'numeric', month: 'short' });
+    const bar = $('actionBar');
+    bar.classList.toggle('is-in', !!mine);
     if (!mine) {
+      const full = day.freeSeats === 0;
+      const n = day.riders.length;
+      const stack = h('span', { class: 'av-stack', 'aria-hidden': 'true' },
+        ...day.riders.slice(0, 6).map((r) => avatar(r.name, r.userId)),
+        n > 6 ? h('span', { class: 'avatar av-more' }, '+' + (n - 6)) : null);
       main.append(
         h('div', { class: 'actionbar-status' },
-          h('strong', null, day.riders.length ? day.riders.length + ' riding' : 'Nobody riding yet'),
-          h('span', null, day.freeSeats === 0 ? 'Full — planning closed' : day.riders.length ? '≈ ' + money(day.summary.perPersonCents) + ' each' : 'Start the convoy')),
-        h('button', { type: 'button', class: 'btn btn-primary', disabled: day.freeSeats === 0, onclick: () => openSheet('join') }, 'Join ' + dayShort));
+          h('strong', { class: 'join-q' }, full ? 'This day is full' : n ? 'Riding ' + fmt(day.date, { weekday: 'long' }) + '?' : 'Start the convoy'),
+          h('span', { class: 'join-meta' }, n ? stack : null,
+            full ? 'Planning closed and the booked vehicles are full'
+              : n ? n + ' riding · ≈ ' + money(day.summary.perPersonCents) + ' each'
+              : 'Nobody has joined yet. Be the first.')),
+        h('button', { type: 'button', class: 'btn btn-primary btn-join', disabled: full, onclick: () => openSheet('join') }, icon('plus'), 'Join ' + dayShort));
     } else {
       const { plan } = seatPlan(planOf(day).map((p) => p.type), day.riders);
       let where = 'no seat yet';
       plan.forEach((seats, i) => seats.forEach((s, j) => {
         if (s.rider && s.rider.id === mine.id) {
-          const t = planOf(day)[i].type;
-          where = S.types[t].label + ', seat ' + (j + 1);
+          const types = planOf(day).map((p) => p.type);
+          const t = types[i];
+          const nth = types.slice(0, i + 1).filter((x) => x === t).length;
+          where = S.types[t].label + (types.filter((x) => x === t).length > 1 ? ' ' + nth : '') + ', seat ' + (j + 1);
         }
       }));
       main.append(
-        h('div', { class: 'actionbar-status' }, h('strong', null, 'You’re in'), h('span', null, where)),
+        h('div', { class: 'actionbar-status' }, h('strong', null, icon('check'), 'You’re in'), h('span', null, where + ' · pickup ' + mine.pickup)),
         h('button', { type: 'button', class: 'btn btn-ghost btn-sm', disabled: day.freeSeats === 0, title: day.freeSeats === 0 ? 'The booked vehicles are full' : '', onclick: () => openSheet('guest') }, icon('user-plus'), 'Guest'));
     }
   }

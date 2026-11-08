@@ -279,6 +279,8 @@ body.is-loading .app { visibility: hidden; }
 }
 .day-sub .pill .icon { width: 15px; height: 15px; }
 .day-sub .pill.is-locked { background: var(--rust-wash); color: var(--rust); }
+.day-sub .pill.is-countdown { font-variant-numeric: tabular-nums; }
+.day-sub .pill.is-soon { background: var(--rust); color: var(--on-rust); }
 
 .day-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
 
@@ -505,11 +507,47 @@ button.price::after { content: "edit"; font-size: 11px; color: var(--ink-3); mar
 .toast.is-error { background: var(--rust); color: var(--on-rust); }
 
 /* ---------- Responsive ---------- */
+/* Join band: the main action. A wide band under the day title on desktop, pinned to the bottom on phones. */
+.actionbar.is-in { background: var(--teal); }
+.actionbar-status strong .icon { width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; }
+.join-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.av-stack { display: inline-flex; padding-left: 8px; }
+.av-stack .avatar { width: 28px; height: 28px; font-size: 10.5px; margin-left: -8px; box-shadow: 0 0 0 2px var(--ink); }
+.av-more { background: var(--ground) !important; color: var(--ink) !important; }
+.btn-join { min-height: 52px; padding: 0 26px; font-size: 17px; }
+.btn-join .icon { width: 20px; height: 20px; }
+
 @media (min-width: 901px) {
-  .actionbar { position: static; transform: none; width: auto; border-radius: 20px; padding: 14px; box-shadow: var(--shadow); }
-  .actionbar-main { flex-wrap: wrap; }
-  .actionbar-status { padding-left: 4px; }
+  .actionbar {
+    position: static; transform: none; width: auto; margin: 0 0 24px;
+    border-radius: 22px; padding: 22px 26px; box-shadow: var(--shadow-lift);
+  }
+  .actionbar-main { gap: 20px; }
+  .actionbar-status { padding-left: 0; font-size: 15px; display: flex; flex-direction: column; gap: 8px; }
+  .actionbar-status span { opacity: 0.8; }
+  .actionbar:not(.is-in) { padding: 34px 26px 30px; }
+  .actionbar:not(.is-in) .actionbar-main { flex-direction: column; text-align: center; gap: 22px; }
+  .actionbar:not(.is-in) .actionbar-status { align-items: center; gap: 12px; }
+  .actionbar:not(.is-in) .join-meta { justify-content: center; }
+  .actionbar-status .join-q { font: 400 clamp(40px, 4.4vw, 56px)/1 var(--display); text-transform: uppercase; letter-spacing: 0.01em; }
+  .actionbar:not(.is-in) .joinsheet { max-width: 640px; margin: 0 auto; width: 100%; }
+  .btn-join { min-height: 60px; padding: 0 34px; font-size: 19px; box-shadow: 0 10px 28px -10px var(--rust) !important; }
+  .actionbar.is-in { padding: 16px 22px; box-shadow: var(--shadow); }
+  .actionbar.is-in .actionbar-status { gap: 2px; }
+  .actionbar.is-in .actionbar-status strong { font-size: 18px; }
+  .joinsheet { flex-direction: row; align-items: flex-end; gap: 14px; padding: 0; }
+  .joinsheet-row { flex: 1; grid-auto-flow: column; grid-auto-columns: 1fr; }
+  .joinsheet-actions .btn-primary { min-height: 52px; padding: 0 28px; font-size: 17px; }
   #ridesView { padding-bottom: 64px; }
+}
+@media (max-width: 900px) {
+  .actionbar-status .join-q { font: 400 24px/1 var(--display); text-transform: uppercase; letter-spacing: 0.01em; }
+  .actionbar:not(.is-in) .actionbar-main { flex-direction: column; align-items: stretch; gap: 12px; }
+  .actionbar:not(.is-in) .actionbar-status { display: flex; flex-direction: column; gap: 4px; padding: 4px 4px 0; }
+  .btn-join { width: 100%; }
+  #ridesView { padding-bottom: 190px; }
+  .av-stack { display: none; }
+  .actionbar { padding: 12px; }
 }
 
 @media (max-width: 900px) {
@@ -539,9 +577,7 @@ button.price::after { content: "edit"; font-size: 11px; color: var(--ink-3); mar
   .bal { grid-template-columns: minmax(0, 8ch) 1fr auto; gap: 8px; }
 }
 
-@media (min-width: 641px) {
-  .joinsheet-row { grid-template-columns: 1fr; }
-}
+
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

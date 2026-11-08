@@ -83,11 +83,16 @@ function requireDate($value) {
 }
 
 // Cancellations and seat moves for a date close at 22:00 on the day before that date.
-function isLocked($rideDate) {
+// Leaving and seat moves close at 22:00 (BUGGY_TIMEZONE) the evening before the ride.
+function lockTimestamp($rideDate) {
     $cutoff = DateTime::createFromFormat('!Y-m-d', $rideDate);
     $cutoff->modify('-1 day');
     $cutoff->setTime(22, 0, 0);
-    return new DateTime() >= $cutoff;
+    return $cutoff->getTimestamp();
+}
+
+function isLocked($rideDate) {
+    return time() >= lockTimestamp($rideDate);
 }
 
 function currentUser($db) {
@@ -297,6 +302,8 @@ function dayState($db, $date) {
     return [
         'date' => $date,
         'locked' => isLocked($date),
+        'lockAt' => lockTimestamp($date),
+        'serverNow' => time(),
         'freeSeats' => lateFreeSeats($db, $date),
         'riders' => $riders,
         'vehicles' => $vehicles,

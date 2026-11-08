@@ -80,6 +80,27 @@
         <p class="day-sub" id="daySub"></p>
       </div>
 
+      <div class="actionbar" id="actionBar">
+        <form class="joinsheet" id="joinSheet" hidden>
+          <div class="joinsheet-row">
+            <label class="field">
+              <span id="joinSheetLabel">Pickup location</span>
+              <input id="pickupInput" type="text" maxlength="80" placeholder="Pousada, street, or meeting point" required>
+            </label>
+            <label class="field" id="guestField" hidden>
+              <span>Guest’s name <small>their share is charged to you</small></span>
+              <input id="guestInput" type="text" maxlength="40">
+            </label>
+          </div>
+          <div class="joinsheet-actions">
+            <button type="button" class="btn btn-ghost" id="joinCancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="joinConfirm">Join</button>
+          </div>
+        </form>
+        <div class="actionbar-main" id="actionMain"></div>
+        <p class="form-msg" id="dayMsg" role="status" aria-live="polite"></p>
+      </div>
+
       <div class="day-grid">
         <section class="stage" aria-labelledby="fleetHeading">
           <div class="stage-head">
@@ -96,27 +117,6 @@
             <p class="cost-line"><span class="cost-amount" id="perPerson">—</span><span class="cost-unit">per person</span></p>
             <p class="cost-meta" id="costMeta"></p>
           </section>
-
-          <div class="actionbar" id="actionBar">
-            <form class="joinsheet" id="joinSheet" hidden>
-              <div class="joinsheet-row">
-                <label class="field">
-                  <span id="joinSheetLabel">Pickup location</span>
-                  <input id="pickupInput" type="text" maxlength="80" placeholder="Pousada, street, or meeting point" required>
-                </label>
-                <label class="field" id="guestField" hidden>
-                  <span>Guest’s name <small>their share is charged to you</small></span>
-                  <input id="guestInput" type="text" maxlength="40">
-                </label>
-              </div>
-              <div class="joinsheet-actions">
-                <button type="button" class="btn btn-ghost" id="joinCancel">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="joinConfirm">Join</button>
-              </div>
-            </form>
-            <div class="actionbar-main" id="actionMain"></div>
-            <p class="form-msg" id="dayMsg" role="status" aria-live="polite"></p>
-          </div>
 
           <section class="riders" aria-labelledby="ridersHeading">
             <h2 id="ridersHeading" class="h-label">Riding <span id="riderCount" class="count"></span></h2>
@@ -184,6 +184,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
     <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M4.5 10.5h5.5M14 10.5h5.5M12 14v6"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2"/></symbol>
