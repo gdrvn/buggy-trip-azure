@@ -2,3 +2,5 @@
 *.sqlite
 buggy-trip-data/
 *.zip
+.env
+.impeccable/
