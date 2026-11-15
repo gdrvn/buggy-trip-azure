@@ -8,15 +8,17 @@ header('Cache-Control: no-store');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: same-origin');
 
-startAppSession();
 $gateError = '';
 
+// Checked before the session starts, so this page still works if the database is unavailable.
 if (sitePassword() === null) {
     http_response_code(503);
     $gateError = 'not-configured';
     require __DIR__ . '/views/gate.php';
     exit;
 }
+
+startAppSession();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['site_password'])) {
     $db = openDatabase();

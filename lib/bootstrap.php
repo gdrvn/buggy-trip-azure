@@ -68,12 +68,13 @@ function startAppSession() {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
-    $dir = dataDir() . '/sessions';
-    ensureDir($dir);
+    require_once __DIR__ . '/session.php';
     $lifetime = BUGGY_SESSION_DAYS * 86400;
-    ini_set('session.save_path', $dir);
     ini_set('session.gc_maxlifetime', (string) $lifetime);
+    ini_set('session.gc_probability', '1'); // clean out expired sessions on about 1% of session starts,
+    ini_set('session.gc_divisor', '100');   // whatever the server's php.ini says
     ini_set('session.use_strict_mode', '1');
+    session_set_save_handler(new SqliteSessionHandler(openDatabase(), $lifetime), true);
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     session_name('buggytrip');
@@ -84,7 +85,9 @@ function startAppSession() {
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    session_start();
+    if (!session_start()) {
+        throw new RuntimeException('Could not start the session.');
+    }
     if (empty($_SESSION['csrf'])) {
         $_SESSION['csrf'] = bin2hex(random_bytes(16));
     }
