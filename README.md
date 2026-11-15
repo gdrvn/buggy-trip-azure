@@ -17,7 +17,8 @@ docker compose up
 ```
 
 Open http://localhost:8080 — group password `dune`. Data lives in the `buggy-data` Docker volume
-(`docker compose down -v` wipes it). Tests: `docker compose run --rm web php tests/fleet_ledger_test.php`.
+(`docker compose down -v` wipes it). Tests: `docker compose run --rm web php tests/fleet_ledger_test.php` and
+`docker compose run --rm web php tests/session_handler_test.php`.
 
 ## Deploying
 
@@ -26,7 +27,7 @@ Pushing `main` deploys to Azure. Before the first deploy of this version:
 1. In the Azure portal → App Service → Environment variables, add `SITE_PASSWORD`. Without it the site shows a "not configured" page.
 2. The schema upgrade **deletes all bookings from the old version** (they had no accounts).
 
-Data is stored in `/home/data/buggy-trip.sqlite` (override with `BUGGY_DB_PATH`), sessions in `/home/data/sessions`.
+Data is stored in `/home/data/buggy-trip.sqlite` (override with `BUGGY_DB_PATH`), sessions in the same database (table `sessions`; Azure's `/home` file share is unreliable for PHP's file sessions).
 
 ## Layout
 
